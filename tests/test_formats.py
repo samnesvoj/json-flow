@@ -64,3 +64,16 @@ def test_detect_format():
 def test_unicode_is_kept():
     assert json.loads(dumps({"name": "Соня"}, "json")) == {"name": "Соня"}
     assert "Соня" in dumps({"name": "Соня"}, "yaml")
+
+
+def test_inference_is_per_column():
+    text = "zip,n,flag,mixed,note\n007,1,true,1,\n10001,2.5,false,yes,x\n"
+    assert loads(text, "csv") == [
+        {"zip": "007", "n": 1, "flag": True, "mixed": "1", "note": None},
+        {"zip": "10001", "n": 2.5, "flag": False, "mixed": "yes", "note": "x"},
+    ]
+
+
+def test_example_zip_column_is_all_strings(examples):
+    rows = loads((examples / "people.csv").read_text(), "csv")
+    assert [r["address"]["zip"] for r in rows] == ["007", "00100", "10001"]

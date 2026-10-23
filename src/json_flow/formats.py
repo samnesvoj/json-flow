@@ -87,6 +87,32 @@ def infer(value: str) -> Any:
     return value
 
 
+def _kind(value: Any) -> str:
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, (list, dict)):
+        return "json"
+    return "string"
+
+
+def infer_columns(rows: list[dict[str, str]]) -> list[dict[str, Any]]:
+    """Infer one type per column, so a column never mixes strings and numbers.
+
+    Empty cells become null. A column is converted only when every non-empty cell infers to the
+    same kind of value (all numbers, all booleans or all JSON); otherwise it stays text — e.g. a ZIP
+    column with "007" and "10001" keeps both as strings.
+    """
+    columns = {k for row in rows for k in row}
+    convert: set[str] = set()
+    for col in columns:
+        kinds = {_kind(infer(row[col])) for row in rows if row.get(col) not in (None, "")}
+        if len(kinds) == 1 and kinds != {"string"}:
+            convert.add(col)
+    return [{k: None if v in (None, "") else infer(v) if k in convert else v for k, v in row.items()} for row in rows]
+
+
 # ── public API ─────────────────────────────────────────────────────────────
 def loads(text: str, fmt: str, *, infer_types: bool = True) -> Any:
     try:
@@ -98,7 +124,9 @@ def loads(text: str, fmt: str, *, infer_types: bool = True) -> Any:
             return yaml.safe_load(text)
         if fmt == "csv":
             rows = list(csv.DictReader(io.StringIO(text)))
-            return [unflatten({k: infer(v) if infer_types else v for k, v in row.items()}) for row in rows]
+            if infer_types:
+                rows = infer_columns(rows)
+            return [unflatten(row) for row in rows]
     except (json.JSONDecodeError, yaml.YAMLError) as e:
         raise FlowError(f"invalid {fmt.upper()}: {e}") from e
     raise FlowError(f"unknown format {fmt!r}")
