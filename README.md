@@ -90,6 +90,31 @@ $ json-flow merge examples/people.csv examples/users-update.yaml --key id --to c
 
 Inputs may be in different formats.
 
+## Validate
+
+```console
+$ echo '[{"id": 1, "name": "", "age": 200, "nickname": "x"}]' > bad.json
+$ json-flow validate bad.json --schema examples/person.schema.yaml --each
+$[0].name: must be at least 1 characters
+$[0].age: must be <= 150, got 200
+$[0].nickname: property is not allowed
+✗ 3 error(s)
+```
+
+Schemas are JSON or YAML and use a focused subset of JSON Schema: `type` (including `integer` vs `number`, where
+booleans are never numbers), `enum`, `const`, `required`, `properties`, `additionalProperties`, `items`,
+`minItems`/`maxItems`/`uniqueItems`, `minimum`/`maximum`/`exclusiveMinimum`/`exclusiveMaximum`,
+`minLength`/`maxLength`/`pattern` and `minProperties`/`maxProperties`. Annotations such as `title` and `$schema` are
+allowed. **Any other keyword is rejected** instead of silently ignored, so a schema can never pass data it was meant
+to block.
+
+| Option | Description |
+|---|---|
+| `--schema FILE` | schema to validate against (required) |
+| `--each` | validate every item of a list (typical for CSV) |
+| `--max-errors N` | print at most N errors (default 50) |
+| `-q, --quiet` | print nothing; use the exit code (`0` valid, `1` invalid) |
+
 ## Use it as a library
 
 ```python

@@ -76,3 +76,26 @@ def test_merge_config_objects(tmp_path, capsys):
     (tmp_path / "prod.json").write_text('{"db": {"host": "db.internal"}}')
     main(["merge", str(tmp_path / "base.yaml"), str(tmp_path / "prod.json"), "--to", "yaml"])
     assert capsys.readouterr().out == "db:\n  host: db.internal\n  port: 5432\n"
+
+
+def test_validate_example_people(examples, capsys):
+    assert main(["validate", str(examples / "people.csv"), "--schema", str(examples / "person.schema.yaml"),
+                 "--each"]) == 0
+    assert "valid" in capsys.readouterr().err
+
+
+def test_validate_reports_errors_and_exits_1(tmp_path, examples, capsys):
+    bad = tmp_path / "bad.json"
+    bad.write_text('[{"id": 1, "name": "", "age": 200, "nickname": "x"}]')
+    assert main(["validate", str(bad), "--schema", str(examples / "person.schema.yaml"), "--each"]) == 1
+    out = capsys.readouterr()
+    assert "$[0].age: must be <= 150, got 200" in out.out
+    assert "$[0].nickname: property is not allowed" in out.out
+    assert "3 error(s)" in out.err
+
+
+def test_validate_quiet(tmp_path, examples, capsys):
+    bad = tmp_path / "bad.json"
+    bad.write_text('{"id": "x"}')
+    assert main(["validate", str(bad), "--schema", str(examples / "person.schema.yaml"), "-q"]) == 1
+    assert capsys.readouterr() == ("", "")
