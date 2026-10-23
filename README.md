@@ -18,8 +18,9 @@ $ json-flow convert examples/people.csv --to yaml
 ...
 ```
 
-CSV values are typed on the way in (`36` → number, `true` → boolean, `""` → null, JSON arrays/objects are parsed),
-while values with leading zeros such as ZIP codes stay strings. Dotted column names (`address.zip`) become nested
+CSV values are typed on the way in (`36` → number, `true` → boolean, `""` → null, JSON arrays/objects are parsed).
+Types are decided **per column**: a column is converted only when all of its values agree, so a ZIP column holding
+`007` and `10001` stays text instead of mixing strings and numbers. Dotted column names (`address.zip`) become nested
 objects, and nested objects are flattened back into dotted columns when you write CSV.
 
 ## Install
