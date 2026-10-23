@@ -7,6 +7,7 @@ import sys
 
 from . import __version__
 from .formats import FORMATS, FlowError, detect_format, read, write
+from .query import build_predicate, project, sort_records
 
 
 def _add_io(p: argparse.ArgumentParser) -> None:
@@ -31,6 +32,34 @@ def cmd_convert(args: argparse.Namespace) -> int:
     return 0
 
 
+def _records(data: object, what: str) -> list:
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        lists = [k for k, v in data.items() if isinstance(v, list)]
+        if len(lists) == 1:  # {"items": [...]} — operate on the only list
+            return data[lists[0]]
+    raise FlowError(f"{what} needs a list of records (or an object holding exactly one list)")
+
+
+def cmd_filter(args: argparse.Namespace) -> int:
+    records = _records(read(args.input, args.src_format, infer_types=not args.no_infer), "filter")
+    keep = build_predicate(args.where or [], any_of=args.any)
+    result = [r for r in records if keep(r)]
+    if args.sort:
+        result = sort_records(result, args.sort, descending=args.desc)
+    if args.limit is not None:
+        result = result[: args.limit]
+    if args.select:
+        fields = [f.strip() for f in args.select.split(",") if f.strip()]
+        result = [project(r, fields) for r in result]
+    if args.count:
+        print(len(result))
+    else:
+        write(result, args.output, _output_format(args), indent=args.indent)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="json-flow", description=__doc__.strip() if __doc__ else None)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -40,6 +69,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("input", help="input file, or - for stdin (with --from)")
     _add_io(p)
     p.set_defaults(func=cmd_convert)
+
+    p = sub.add_parser("filter", help="keep records matching conditions; select, sort and limit")
+    p.add_argument("input", help="input file, or - for stdin (with --from)")
+    p.add_argument("-w", "--where", action="append", metavar="COND",
+                   help="condition like 'age>=18', 'city==Paris', 'name~=^A' (repeatable; all must match)")
+    p.add_argument("--any", action="store_true", help="keep records matching any condition instead of all")
+    p.add_argument("-s", "--select", metavar="FIELDS", help="comma-separated fields to keep, e.g. name,address.zip")
+    p.add_argument("--sort", metavar="FIELD", help="sort by a field (records without it go last)")
+    p.add_argument("--desc", action="store_true", help="sort in descending order")
+    p.add_argument("--limit", type=int, metavar="N", help="keep at most N records")
+    p.add_argument("--count", action="store_true", help="print only the number of matching records")
+    _add_io(p)
+    p.set_defaults(func=cmd_filter)
     return parser
 
 
