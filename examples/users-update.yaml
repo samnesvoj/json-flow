@@ -1,0 +1,7 @@
+- id: 2
+  city: Portland
+  tags: [kernel, git]
+- id: 4
+  name: Margaret
+  age: 33
+  city: Cambridge

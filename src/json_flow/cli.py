@@ -7,6 +7,7 @@ import sys
 
 from . import __version__
 from .formats import FORMATS, FlowError, detect_format, read, write
+from .merge import merge_documents
 from .query import build_predicate, project, sort_records
 
 
@@ -60,6 +61,13 @@ def cmd_filter(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_merge(args: argparse.Namespace) -> int:
+    docs = [read(path, args.src_format, infer_types=not args.no_infer) for path in args.inputs]
+    merged = merge_documents(docs, key=args.key, list_mode="replace" if args.replace_lists else "concat")
+    write(merged, args.output, _output_format(args), indent=args.indent)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="json-flow", description=__doc__.strip() if __doc__ else None)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -82,6 +90,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--count", action="store_true", help="print only the number of matching records")
     _add_io(p)
     p.set_defaults(func=cmd_filter)
+
+    p = sub.add_parser("merge", help="merge files: concatenate lists, deep-merge objects, upsert by key")
+    p.add_argument("inputs", nargs="+", help="files to merge, in order (formats may differ)")
+    p.add_argument("-k", "--key", metavar="FIELD", help="merge list records that share this field (upsert)")
+    p.add_argument("--replace-lists", action="store_true",
+                   help="when deep-merging objects, replace lists instead of concatenating them")
+    _add_io(p)
+    p.set_defaults(func=cmd_merge)
     return parser
 
 
