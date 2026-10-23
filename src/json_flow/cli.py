@@ -7,6 +7,7 @@ import sys
 
 from . import __version__
 from .formats import FORMATS, FlowError, detect_format, read, write
+from .batch import run_batch
 from .merge import merge_documents
 from .query import build_predicate, project, sort_records
 from .validate import validate
@@ -82,6 +83,20 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 1 if errors else 0
 
 
+def cmd_batch(args: argparse.Namespace) -> int:
+    schema = read(args.schema) if args.schema else None
+    result = run_batch(args.patterns, args.out_dir, args.dst_format, schema=schema,
+                       infer_types=not args.no_infer, indent=args.indent)
+    for src, dst in result.converted:
+        print(f"✓ {src} → {dst}")
+    for src, err in result.failed:
+        print(f"✗ {src}: {err}", file=sys.stderr)
+    total = len(result.converted) + len(result.failed)
+    print(f"{len(result.converted)}/{total} converted" + (f", {len(result.failed)} failed" if result.failed else ""),
+          file=sys.stderr)
+    return 1 if result.failed else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="json-flow", description=__doc__.strip() if __doc__ else None)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -122,6 +137,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--from", dest="src_format", choices=FORMATS, help="input format (default: from extension)")
     p.add_argument("--no-infer", action="store_true", help="keep CSV values as strings")
     p.set_defaults(func=cmd_validate)
+
+    p = sub.add_parser("batch", help="convert (and optionally validate) many files at once")
+    p.add_argument("patterns", nargs="+", help="files or glob patterns, e.g. 'data/**/*.csv' (quote them)")
+    p.add_argument("--to", dest="dst_format", choices=FORMATS, required=True, help="output format")
+    p.add_argument("--out-dir", required=True, help="directory for results; input folder layout is mirrored")
+    p.add_argument("--schema", help="validate every file first; invalid files are reported and skipped")
+    p.add_argument("--indent", type=int, default=2, help="JSON indentation, 0 for compact (default: 2)")
+    p.add_argument("--no-infer", action="store_true", help="keep CSV values as strings")
+    p.set_defaults(func=cmd_batch)
     return parser
 
 

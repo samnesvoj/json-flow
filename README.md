@@ -1,6 +1,15 @@
 # json-flow
 
 Convert, filter, merge, validate and batch-process **JSON, JSON Lines, CSV and YAML** from the command line.
+
+| Command | What it does |
+|---|---|
+| `convert` | change format, with typed CSV and nested columns |
+| `filter` | keep records by conditions; select, sort, limit, count |
+| `merge` | concatenate lists, deep-merge objects, upsert by key |
+| `validate` | check against a strict JSON Schema subset |
+| `batch` | convert and validate many files at once |
+
 One small dependency (PyYAML), predictable output, useful exit codes.
 
 ```console
@@ -114,6 +123,20 @@ to block.
 | `--each` | validate every item of a list (typical for CSV) |
 | `--max-errors N` | print at most N errors (default 50) |
 | `-q, --quiet` | print nothing; use the exit code (`0` valid, `1` invalid) |
+
+## Batch processing
+
+```console
+$ json-flow batch 'exports/**/*.csv' --to json --out-dir out --schema examples/person.schema.yaml
+✓ exports/2026/people.csv → out/2026/people.json
+✗ exports/2027/people.csv: invalid: $[3].age: must be <= 150, got 200
+1/2 converted, 1 failed
+```
+
+- Patterns are expanded by json-flow itself (`**` recurses), so quoting them works the same on every OS.
+- The input folder layout is mirrored under `--out-dir`, so files with the same name never overwrite each other.
+- With `--schema`, each file (each item, for lists) is validated first; invalid files are reported and not written.
+- Every file is attempted; the exit code is `1` if any failed.
 
 ## Use it as a library
 
