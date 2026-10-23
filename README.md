@@ -52,12 +52,14 @@ cat data.jsonl | json-flow convert - --from jsonl --to yaml
 | Option | Description |
 |---|---|
 | `-o, --output FILE` | write to a file (directories are created); default is stdout |
-| `--from FORMAT` | input format: `json`, `jsonl`, `csv`, `yaml` (default: from the extension) |
+| `--from FORMAT` | input format: `json`, `jsonl`, `csv`, `yaml`, `toml` (default: from the extension) |
 | `--to FORMAT` | output format (default: from the `-o` extension, otherwise `json`) |
 | `--indent N` | JSON indentation, `0` for compact output |
 | `--no-infer` | keep CSV values as strings |
 
-Formats are recognised from `.json`, `.jsonl`/`.ndjson`, `.csv`, `.yaml`/`.yml`. Exit code is `0` on success and
+Formats are recognised from `.json`, `.jsonl`/`.ndjson`, `.csv`, `.yaml`/`.yml` and `.toml`. TOML is read-only
+(Python 3.11+, via the standard library's `tomllib`); its dates and times become ISO 8601 strings, so a TOML config
+can be filtered, validated or converted to any other format. Exit code is `0` on success and
 `1` on a user error (missing file, invalid input, data that cannot be written as CSV), with a one-line message on
 stderr.
 
