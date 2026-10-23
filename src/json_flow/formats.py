@@ -12,8 +12,8 @@ from typing import Any
 
 import yaml
 
-FORMATS = ("json", "jsonl", "csv", "yaml")
-_EXTENSIONS = {".json": "json", ".jsonl": "jsonl", ".ndjson": "jsonl", ".csv": "csv", ".yaml": "yaml", ".yml": "yaml"}
+FORMATS = ("json", "jsonl", "csv", "yaml", "toml")
+_EXTENSIONS = {".json": "json", ".jsonl": "jsonl", ".ndjson": "jsonl", ".csv": "csv", ".yaml": "yaml", ".yml": "yaml", ".toml": "toml"}
 
 
 class FlowError(Exception):
@@ -122,12 +122,14 @@ def loads(text: str, fmt: str, *, infer_types: bool = True) -> Any:
             return [json.loads(line) for line in text.splitlines() if line.strip()]
         if fmt == "yaml":
             return yaml.safe_load(text)
+        if fmt == "toml":
+            return _load_toml(text)
         if fmt == "csv":
             rows = list(csv.DictReader(io.StringIO(text)))
             if infer_types:
                 rows = infer_columns(rows)
             return [unflatten(row) for row in rows]
-    except (json.JSONDecodeError, yaml.YAMLError) as e:
+    except (json.JSONDecodeError, yaml.YAMLError, ValueError) as e:
         raise FlowError(f"invalid {fmt.upper()}: {e}") from e
     raise FlowError(f"unknown format {fmt!r}")
 
@@ -140,6 +142,8 @@ def dumps(data: Any, fmt: str, *, indent: int = 2) -> str:
         return "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
     if fmt == "yaml":
         return yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
+    if fmt == "toml":
+        raise FlowError("TOML is supported as an input format only")
     if fmt == "csv":
         rows = [data] if isinstance(data, dict) else data
         if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
@@ -155,6 +159,26 @@ def dumps(data: Any, fmt: str, *, indent: int = 2) -> str:
             writer.writerow({k: _csv_cell(v) for k, v in r.items()})
         return buf.getvalue()
     raise FlowError(f"unknown format {fmt!r}")
+
+
+def _load_toml(text: str) -> Any:
+    try:
+        import tomllib  # Python 3.11+
+    except ModuleNotFoundError as e:  # pragma: no cover - depends on the interpreter
+        raise FlowError("reading TOML needs Python 3.11 or newer") from e
+    data = tomllib.loads(text)
+    return _plain(data)
+
+
+def _plain(value: Any) -> Any:
+    """TOML dates and times become ISO 8601 strings so every output format can hold them."""
+    if isinstance(value, dict):
+        return {k: _plain(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_plain(v) for v in value]
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value
 
 
 def _csv_cell(v: Any) -> Any:

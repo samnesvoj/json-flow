@@ -1,0 +1,16 @@
+[app]
+name = "json-flow demo"
+debug = false
+released = 2026-10-23
+
+[database]
+host = "localhost"
+ports = [5432, 5433]
+
+[[users]]
+name = "Ada"
+roles = ["admin"]
+
+[[users]]
+name = "Linus"
+roles = []
