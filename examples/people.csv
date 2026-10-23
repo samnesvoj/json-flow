@@ -1,0 +1,4 @@
+id,name,age,city,address.zip,active,tags
+1,Ada,36,London,007,true,"[""math"",""engines""]"
+2,Linus,29,Helsinki,00100,false,[]
+3,Grace,45,New York,10001,true,"[""compilers""]"
