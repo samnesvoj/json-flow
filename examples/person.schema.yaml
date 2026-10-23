@@ -1,0 +1,14 @@
+type: object
+required: [id, name, age]
+properties:
+  id: { type: integer, minimum: 1 }
+  name: { type: string, minLength: 1 }
+  age: { type: integer, minimum: 0, maximum: 150 }
+  city: { type: string }
+  address:
+    type: object
+    properties:
+      zip: { type: string, pattern: "^[0-9]+$" }
+  active: { type: boolean }
+  tags: { type: array, items: { type: string }, uniqueItems: true }
+additionalProperties: false

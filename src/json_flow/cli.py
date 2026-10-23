@@ -9,6 +9,7 @@ from . import __version__
 from .formats import FORMATS, FlowError, detect_format, read, write
 from .merge import merge_documents
 from .query import build_predicate, project, sort_records
+from .validate import validate
 
 
 def _add_io(p: argparse.ArgumentParser) -> None:
@@ -68,6 +69,19 @@ def cmd_merge(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_validate(args: argparse.Namespace) -> int:
+    data = read(args.input, args.src_format, infer_types=not args.no_infer)
+    schema = read(args.schema)
+    errors = validate(data, schema, each=args.each)
+    if not args.quiet:
+        for err in errors[: args.max_errors]:
+            print(err)
+        if len(errors) > args.max_errors:
+            print(f"... and {len(errors) - args.max_errors} more")
+        print(f"✗ {len(errors)} error(s)" if errors else "✓ valid", file=sys.stderr)
+    return 1 if errors else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="json-flow", description=__doc__.strip() if __doc__ else None)
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
@@ -98,6 +112,16 @@ def build_parser() -> argparse.ArgumentParser:
                    help="when deep-merging objects, replace lists instead of concatenating them")
     _add_io(p)
     p.set_defaults(func=cmd_merge)
+
+    p = sub.add_parser("validate", help="check data against a JSON Schema subset; exit 1 when invalid")
+    p.add_argument("input", help="file to validate, or - for stdin (with --from)")
+    p.add_argument("--schema", required=True, help="schema file (JSON or YAML)")
+    p.add_argument("--each", action="store_true", help="validate every item of a list against the schema")
+    p.add_argument("--max-errors", type=int, default=50, metavar="N", help="print at most N errors (default: 50)")
+    p.add_argument("-q", "--quiet", action="store_true", help="print nothing; only set the exit code")
+    p.add_argument("--from", dest="src_format", choices=FORMATS, help="input format (default: from extension)")
+    p.add_argument("--no-infer", action="store_true", help="keep CSV values as strings")
+    p.set_defaults(func=cmd_validate)
     return parser
 
 
