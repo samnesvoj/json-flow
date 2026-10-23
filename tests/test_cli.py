@@ -35,3 +35,28 @@ def test_module_entry_point_reads_stdin():
     r = subprocess.run([sys.executable, "-m", "json_flow", "convert", "-", "--from", "yaml", "--to", "json", "--indent", "0"],
                        input="a: 1\nb: [x, y]\n", capture_output=True, text=True, check=True)
     assert json.loads(r.stdout) == {"a": 1, "b": ["x", "y"]}
+
+
+def test_filter_select_sort_limit(examples, capsys):
+    rc = main(["filter", str(examples / "people.csv"), "-w", "active==true", "--sort", "age", "--desc",
+               "--select", "name,age", "--indent", "0"])
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out) == [{"name": "Grace", "age": 45}, {"name": "Ada", "age": 36}]
+
+
+def test_filter_count(examples, capsys):
+    main(["filter", str(examples / "people.csv"), "-w", "age<40", "--count"])
+    assert capsys.readouterr().out.strip() == "2"
+
+
+def test_filter_unwraps_single_list_object(tmp_path, capsys):
+    f = tmp_path / "d.json"
+    f.write_text('{"items": [{"a": 1}, {"a": 2}]}')
+    main(["filter", str(f), "-w", "a>1", "--indent", "0"])
+    assert json.loads(capsys.readouterr().out) == [{"a": 2}]
+
+
+def test_filter_rejects_scalars(tmp_path, capsys):
+    f = tmp_path / "d.json"
+    f.write_text("42")
+    assert main(["filter", str(f)]) == 1

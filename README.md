@@ -51,6 +51,30 @@ Formats are recognised from `.json`, `.jsonl`/`.ndjson`, `.csv`, `.yaml`/`.yml`.
 `1` on a user error (missing file, invalid input, data that cannot be written as CSV), with a one-line message on
 stderr.
 
+## Filter, select and sort
+
+```console
+$ json-flow filter examples/people.csv -w 'age>=30' --sort age --desc --select name,city --to csv
+name,city
+Grace,New York
+Ada,London
+```
+
+| Option | Description |
+|---|---|
+| `-w, --where COND` | keep records matching a condition; repeat for more (all must match) |
+| `--any` | keep records matching *any* condition instead |
+| `-s, --select FIELDS` | comma-separated fields to keep; dotted paths keep their nesting (`address.zip`) |
+| `--sort FIELD` / `--desc` | sort by a field; records without it go last |
+| `--limit N` | keep at most N records |
+| `--count` | print only the number of matches |
+
+Conditions are `FIELD OP VALUE` with `==`, `!=`, `>`, `>=`, `<`, `<=` or `~=` (regular expression search; on a list
+it matches any element). Fields are dotted paths and may index lists (`tags.0`). Values are typed like CSV cells, so
+`age>=18` compares numbers; quote a value to force a string (`zip=="007"`). Ordering comparisons between
+incompatible types are simply false. If the input is an object holding exactly one list (`{"items": [...]}`), that
+list is filtered.
+
 ## Use it as a library
 
 ```python
