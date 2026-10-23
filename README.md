@@ -75,6 +75,20 @@ it matches any element). Fields are dotted paths and may index lists (`tags.0`).
 incompatible types are simply false. If the input is an object holding exactly one list (`{"items": [...]}`), that
 list is filtered.
 
+## Merge
+
+```console
+$ json-flow merge examples/people.csv examples/users-update.yaml --key id --to csv
+```
+
+- **Lists** are concatenated in order.
+- **Objects** are deep-merged; later files win on conflicts (lists inside them are concatenated, or replaced with
+  `--replace-lists`). Handy for layered config: `json-flow merge base.yaml prod.json`.
+- **`--key FIELD`** upserts list records that share a field (dotted paths allowed): later records are merged into
+  earlier ones, order follows first appearance, and records without the key are kept as they are.
+
+Inputs may be in different formats.
+
 ## Use it as a library
 
 ```python

@@ -60,3 +60,19 @@ def test_filter_rejects_scalars(tmp_path, capsys):
     f = tmp_path / "d.json"
     f.write_text("42")
     assert main(["filter", str(f)]) == 1
+
+
+def test_merge_csv_and_yaml_by_key(examples, capsys):
+    assert main(["merge", str(examples / "people.csv"), str(examples / "users-update.yaml"), "--key", "id",
+                 "--indent", "0"]) == 0
+    people = json.loads(capsys.readouterr().out)
+    assert [p["id"] for p in people] == [1, 2, 3, 4]
+    linus = people[1]
+    assert (linus["name"], linus["city"], linus["tags"]) == ("Linus", "Portland", ["kernel", "git"])
+
+
+def test_merge_config_objects(tmp_path, capsys):
+    (tmp_path / "base.yaml").write_text("db:\n  host: localhost\n  port: 5432\n")
+    (tmp_path / "prod.json").write_text('{"db": {"host": "db.internal"}}')
+    main(["merge", str(tmp_path / "base.yaml"), str(tmp_path / "prod.json"), "--to", "yaml"])
+    assert capsys.readouterr().out == "db:\n  host: db.internal\n  port: 5432\n"
